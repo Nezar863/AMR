@@ -1,0 +1,32 @@
+# config/ekf_params.yaml
+ekf_filter_node:
+  ros__parameters:
+    frequency: 30.0
+    sensor_timeout: 0.1
+    two_d_mode: true          # robot moves in 2D only
+    publish_tf: true          # EKF will publish odom → base_link TF
+    map_frame: map
+    odom_frame: odom
+    base_link_frame: base_link
+    world_frame: odom
+
+    # Input 1: wheel encoder odometry
+    odom0: /diff_drive_controller/odom
+    odom0_config: [true,  true,  false,   # x, y, z  (use x and y)
+                   false, false, false,   # roll, pitch, yaw (don't trust yaw from wheels)
+                   true,  true,  false,   # vx, vy, vz
+                   false, false, true,    # vroll, vpitch, vyaw (use angular vel from wheels)
+                   false, false, false]   # ax, ay, az
+    odom0_differential: false
+    odom0_relative: false
+
+    # Input 2: IMU
+    imu0: /imu
+    imu0_config: [false, false, false,    # x, y, z
+                  false, false, true,     # roll, pitch, yaw (trust absolute yaw from IMU)
+                  false, false, false,    # vx, vy, vz
+                  true,  true,  true,     # vroll, vpitch, vyaw (angular velocity)
+                  true,  false, false]    # ax (forward acceleration), ay, az
+    imu0_differential: false
+    imu0_relative: false
+    imu0_remove_gravitational_acceleration: true

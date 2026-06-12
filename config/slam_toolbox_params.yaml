@@ -1,0 +1,66 @@
+# slam_toolbox_params.yaml  (v3 - WSL2 + GPU version)
+# Proper rates now that GPU acceleration is available.
+#
+# Where to put this file:
+#   ~/ros2_ws/src/amr_description/config/slam_toolbox_params.yaml
+
+slam_toolbox:
+  ros__parameters:
+
+    # ── Solver ────────────────────────────────────────────────────────
+    solver_plugin: solver_plugins::CeresSolver
+    ceres_linear_solver: SPARSE_NORMAL_CHOLESKY
+    ceres_preconditioner: SCHUR_JACOBI
+    ceres_trust_strategy: LEVENBERG_MARQUARDT
+    ceres_dogleg_type: TRADITIONAL_DOGLEG
+    ceres_loss_function: None
+
+    # ── Frames ────────────────────────────────────────────────────────
+    odom_frame: odom
+    map_frame: map
+    base_frame: base_link
+    scan_topic: /scan
+
+    # ── Mode ──────────────────────────────────────────────────────────
+    mode: mapping
+
+    # ── Timing ────────────────────────────────────────────────────────
+    map_update_interval: 2.0       # update map every 2 seconds (GPU can handle it)
+    resolution: 0.05               # 5cm per pixel — good detail for apartment
+    max_laser_range: 7.5           # slightly under lidar max of 8.0m
+
+    minimum_travel_distance: 0.05  # process scan after moving 5cm
+    minimum_travel_heading: 0.05   # or rotating 0.05 rad (~3 degrees)
+
+    scan_buffer_size: 10
+    scan_buffer_maximum_scan_distance: 10.0
+
+    # ── Scan matching ─────────────────────────────────────────────────
+    link_match_minimum_response_fine: 0.1
+    link_scan_maximum_distance: 1.5
+    loop_search_maximum_distance: 3.0
+    do_loop_closing: true
+    loop_match_minimum_chain_size: 10
+    loop_match_maximum_variance_coarse: 3.0
+    loop_match_minimum_response_coarse: 0.35
+    loop_match_minimum_response_fine: 0.45
+
+    # ── Correlation ───────────────────────────────────────────────────
+    correlation_search_space_dimension: 0.5
+    correlation_search_space_resolution: 0.01
+    correlation_search_space_smear_deviation: 0.1
+
+    # ── Loop closure ──────────────────────────────────────────────────
+    loop_search_space_dimension: 8.0
+    loop_search_space_resolution: 0.05
+    loop_search_space_smear_deviation: 0.03
+
+    # ── Fine tuning ───────────────────────────────────────────────────
+    distance_variance_penalty: 0.5
+    angle_variance_penalty: 1.0
+    fine_search_angle_offset: 0.00349
+    coarse_search_angle_offset: 0.349
+    coarse_angle_resolution: 0.0349
+    minimum_angle_penalty: 0.9
+    minimum_distance_penalty: 0.5
+    use_response_expansion: true
