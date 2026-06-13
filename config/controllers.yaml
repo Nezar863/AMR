@@ -14,18 +14,18 @@ diff_drive_controller:
 
     # Wheel names — swapped to match physical axis directions
     left_wheel_names:
-      - front_right_wheel_joint
-      - back_right_wheel_joint
-    right_wheel_names:
       - front_left_wheel_joint
       - back_left_wheel_joint
+
+    right_wheel_names:
+      - front_right_wheel_joint
+      - back_right_wheel_joint
+
 
     wheel_separation: 0.37128
     wheel_radius: 0.065
 
-    # Negative multiplier flips how angular velocity is distributed
-    # between left and right wheels, fixing backward rotation in Gazebo
-    wheel_separation_multiplier: -1.0
+    wheel_separation_multiplier:  1.0
     left_wheel_radius_multiplier: 1.0
     right_wheel_radius_multiplier: 1.0
 
@@ -40,17 +40,20 @@ diff_drive_controller:
 
     linear:
       x:
-        has_velocity_limits: true
-        max_velocity: 1.0
-        min_velocity: -1.0
+        has_velocity_limits:     true
+        max_velocity:            1.0   # m/s
+        min_velocity:           -1.0   # m/s
         has_acceleration_limits: true
-        max_acceleration: 1.0
-        min_acceleration: -1.0
+        max_acceleration:        1.0   # m/s^2
+        min_acceleration:       -1.0   # m/s^2
+        has_jerk_limits:         false
+        max_jerk:                5.0   # m/s^3
     angular:
       z:
-        has_velocity_limits: true
-        max_velocity: 2.0
-        min_velocity: -2.0
+        has_velocity_limits:     true
+        max_velocity:            4.0   # rad/s
+        min_velocity:           -4.0   # rad/s
         has_acceleration_limits: true
-        max_acceleration: 2.0
-        min_acceleration: -2.0
+        max_acceleration:        3.0   # rad/s^2
+        min_acceleration:       -3.0   # rad/s^2
+        has_jerk_limits:         false

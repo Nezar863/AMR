@@ -8,8 +8,6 @@ Starts: Gazebo → robot_state_publisher → spawn robot →
 
 import os
 import subprocess
-
-from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import (
     IncludeLaunchDescription,
@@ -19,11 +17,20 @@ from launch.actions import (
 from launch.event_handlers import OnProcessExit
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.actions import Node
-
+from ament_index_python.packages import (get_package_prefix, get_package_share_directory)
 
 def generate_launch_description():
 
     pkg = get_package_share_directory('amr_description')
+
+
+    install_description_dir_path = get_package_prefix('amr_description') + "/share"
+
+    if "GZ_SIM_RESOURCE_PATH" in os.environ:
+        if install_description_dir_path not in os.environ["GZ_SIM_RESOURCE_PATH"]:
+            os.environ["GZ_SIM_RESOURCE_PATH"] += (':' + install_description_dir_path)
+    else:
+        os.environ["GZ_SIM_RESOURCE_PATH"] = (':'.join(install_description_dir_path))
 
     # ------------------------------------------------------------------ #
     # 1. Parse URDF (xacro → string)
