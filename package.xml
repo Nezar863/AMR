@@ -6,6 +6,7 @@
   <version>0.1.0</version>
   <description>
     URDF description, Gazebo simulation, and launch files for the AMR robot.
+    Includes autonomous navigation via Nav2 and frontier exploration.
   </description>
   <maintainer email="you@example.com">Your Name</maintainer>
   <license>Apache-2.0</license>
@@ -34,12 +35,51 @@
   <depend>controller_manager</depend>
   <depend>diff_drive_controller</depend>
   <depend>joint_state_broadcaster</depend>
+
+  <!-- Localization -->
   <depend>robot_localization</depend>
 
-  <!-- Sensor message types (for bridge) -->
+  <!-- SLAM -->
+  <depend>slam_toolbox</depend>
+
+  <!-- ── Nav2 stack (Jazzy) ──────────────────────────────────────────── -->
+  <!-- Core metapackage — pulls everything below if installed via apt -->
+  <depend>navigation2</depend>
+
+  <!-- Individual Nav2 packages (explicit for rosdep / colcon) -->
+  <depend>nav2_bringup</depend>
+  <depend>nav2_bt_navigator</depend>
+  <depend>nav2_planner</depend>
+  <depend>nav2_controller</depend>
+  <depend>nav2_costmap_2d</depend>
+
+  <!-- Jazzy name for recovery/behavior server -->
+  <depend>nav2_behaviors</depend>
+
+  <depend>nav2_lifecycle_manager</depend>
+  <depend>nav2_map_server</depend>
+  <depend>nav2_amcl</depend>
+  <depend>nav2_navfn_planner</depend>
+  <depend>nav2_smoother</depend>
+  <depend>nav2_velocity_smoother</depend>
+  <depend>nav2_msgs</depend>
+  <depend>nav2_common</depend>
+
+  <!-- DWB local planner (used by controller_server) -->
+  <depend>dwb_core</depend>
+  <depend>dwb_critics</depend>
+  <depend>dwb_plugins</depend>
+  <depend>nav2_dwb_controller</depend>
+
+  <!-- Frontier exploration (cloned from mertgulerx/frontier_exploration_ros2) -->
+  <depend>frontier_exploration_ros2</depend>
+
+  <!-- Message types -->
   <depend>sensor_msgs</depend>
   <depend>geometry_msgs</depend>
   <depend>nav_msgs</depend>
+  <depend>action_msgs</depend>
+  <depend>std_msgs</depend>
 
   <!-- Launch -->
   <depend>launch</depend>

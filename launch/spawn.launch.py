@@ -1,9 +1,16 @@
 """
-spawn.launch.py
----------------
+spawn.launch.py  (updated for Nav2 autonomy)
+--------------------------------------------
 Main simulation launch file for AMR in Gazebo Harmonic.
 Starts: Gazebo → robot_state_publisher → spawn robot →
         controllers → topic bridges → EKF → RViz
+
+Changes from the original teleop version:
+  1. RViz now loads slam_rviz.rviz by default (shows /map, /scan,
+     costmaps, and the planned path — better for autonomous operation).
+     Change rviz_config back to amr.rviz if you prefer the old view.
+  2. No other changes — teleop still works if you run teleop.launch.py.
+     Nav2 simply replaces teleop by publishing to the same cmd_vel topic.
 """
 
 import os
@@ -17,33 +24,36 @@ from launch.actions import (
 from launch.event_handlers import OnProcessExit
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.actions import Node
-from ament_index_python.packages import (get_package_prefix, get_package_share_directory)
+from ament_index_python.packages import (
+    get_package_prefix,
+    get_package_share_directory,
+)
+
 
 def generate_launch_description():
 
     pkg = get_package_share_directory('amr_description')
 
+    install_description_dir_path = get_package_prefix('amr_description') + '/share'
 
-    install_description_dir_path = get_package_prefix('amr_description') + "/share"
-
-    if "GZ_SIM_RESOURCE_PATH" in os.environ:
-        if install_description_dir_path not in os.environ["GZ_SIM_RESOURCE_PATH"]:
-            os.environ["GZ_SIM_RESOURCE_PATH"] += (':' + install_description_dir_path)
+    if 'GZ_SIM_RESOURCE_PATH' in os.environ:
+        if install_description_dir_path not in os.environ['GZ_SIM_RESOURCE_PATH']:
+            os.environ['GZ_SIM_RESOURCE_PATH'] += ':' + install_description_dir_path
     else:
-        os.environ["GZ_SIM_RESOURCE_PATH"] = (':'.join(install_description_dir_path))
+        os.environ['GZ_SIM_RESOURCE_PATH'] = ':'.join(install_description_dir_path)
 
     # ------------------------------------------------------------------ #
     # 1. Parse URDF (xacro → string)
     # ------------------------------------------------------------------ #
     urdf_path = os.path.join(pkg, 'urdf', 'amr.urdf.xacro')
+    robot_description = subprocess.check_output(['xacro', urdf_path]).decode()
 
-    robot_description = subprocess.check_output(
-        ['xacro', urdf_path]
-    ).decode()
+    world_file  = os.path.join(pkg, 'worlds', 'apartment.world')
 
-    # ── Only change from original: apartment.world instead of empty.world
-    world_file = os.path.join(pkg, 'worlds', 'apartment.world')
-    rviz_config = os.path.join(pkg, 'rviz', 'amr.rviz')
+    # CHANGED: use slam_rviz.rviz so the map, scan, costmaps, and planned
+    # path are all visible during autonomous operation.
+    # Swap back to 'amr.rviz' if you prefer the original view.
+    rviz_config = os.path.join(pkg, 'rviz', 'slam_rviz.rviz')
 
     # ------------------------------------------------------------------ #
     # 2. Gazebo Harmonic
@@ -52,11 +62,7 @@ def generate_launch_description():
 
     gazebo = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            os.path.join(
-                gz_sim_pkg,
-                'launch',
-                'gz_sim.launch.py'
-            )
+            os.path.join(gz_sim_pkg, 'launch', 'gz_sim.launch.py')
         ),
         launch_arguments={
             'gz_args': f'{world_file} -r -v 4',
@@ -86,7 +92,7 @@ def generate_launch_description():
         name='spawn_amr',
         output='screen',
         arguments=[
-            '-name', 'amr',
+            '-name',  'amr',
             '-topic', 'robot_description',
             '-x', '0.0',
             '-y', '0.0',
@@ -102,8 +108,7 @@ def generate_launch_description():
         executable='spawner',
         arguments=[
             'joint_state_broadcaster',
-            '--controller-manager',
-            '/controller_manager',
+            '--controller-manager', '/controller_manager',
         ],
         output='screen',
     )
@@ -113,37 +118,32 @@ def generate_launch_description():
         executable='spawner',
         arguments=[
             'diff_drive_controller',
-            '--controller-manager',
-            '/controller_manager',
+            '--controller-manager', '/controller_manager',
         ],
         output='screen',
     )
 
-    # Wait for robot spawn before loading JSB
+    # Wait for robot spawn, then load joint_state_broadcaster
     activate_jsb = RegisterEventHandler(
         event_handler=OnProcessExit(
             target_action=spawn_robot,
             on_exit=[
                 TimerAction(
                     period=3.0,
-                    actions=[
-                        joint_state_broadcaster_spawner
-                    ],
+                    actions=[joint_state_broadcaster_spawner],
                 )
             ],
         )
     )
 
-    # Wait for JSB before loading diff drive controller
+    # Wait for joint_state_broadcaster, then load diff_drive_controller
     activate_ddc = RegisterEventHandler(
         event_handler=OnProcessExit(
             target_action=joint_state_broadcaster_spawner,
             on_exit=[
                 TimerAction(
                     period=1.0,
-                    actions=[
-                        diff_drive_controller_spawner
-                    ],
+                    actions=[diff_drive_controller_spawner],
                 )
             ],
         )
@@ -151,6 +151,7 @@ def generate_launch_description():
 
     # ------------------------------------------------------------------ #
     # 6. ROS ↔ Gazebo topic bridges
+    # /scan, /imu, /clock are required by SLAM Toolbox and Nav2.
     # ------------------------------------------------------------------ #
     bridge = Node(
         package='ros_gz_bridge',
@@ -165,8 +166,9 @@ def generate_launch_description():
     )
 
     # ------------------------------------------------------------------ #
-    # 7. EKF — fuses wheel odometry + IMU into clean /odometry/filtered
-    #    and publishes the corrected odom → base_link TF
+    # 7. EKF — fuses wheel odometry + IMU → /odometry/filtered
+    #    and publishes the corrected odom → base_link TF.
+    #    Nav2 reads /odometry/filtered (set in nav2_params.yaml).
     # ------------------------------------------------------------------ #
     ekf_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -175,7 +177,7 @@ def generate_launch_description():
     )
 
     # ------------------------------------------------------------------ #
-    # 8. RViz
+    # 8. RViz  (delayed 5 s to let everything start up first)
     # ------------------------------------------------------------------ #
     rviz = TimerAction(
         period=5.0,
@@ -185,15 +187,10 @@ def generate_launch_description():
                 executable='rviz2',
                 name='rviz2',
                 output='screen',
-                arguments=[
-                    '-d',
-                    rviz_config
-                ],
-                parameters=[{
-                    'use_sim_time': True
-                }],
+                arguments=['-d', rviz_config],
+                parameters=[{'use_sim_time': True}],
             )
-        ]
+        ],
     )
 
     return LaunchDescription([
@@ -203,6 +200,6 @@ def generate_launch_description():
         activate_jsb,
         activate_ddc,
         bridge,
-        ekf_launch,       # ← EKF starts alongside the bridge, before RViz
+        ekf_launch,
         rviz,
     ])

@@ -1,0 +1,147 @@
+# frontier_explorer_params.yaml
+# ---------------------------------------------------------------
+# Parameters for frontier_exploration_ros2 (mertgulerx)
+# Tuned for amr_description robot:
+#   - base_frame  : base_link   (your URDF frame)
+#   - LiDAR range : 8.0 m, 360 degrees
+#   - robot radius: 0.38 m
+#   - map topic   : /map        (from SLAM Toolbox)
+#   - costmap     : /global_costmap/costmap  (from Nav2)
+# ---------------------------------------------------------------
+
+frontier_explorer:
+  ros__parameters:
+
+    # --------------- TOPICS ---------------------------------------- #
+
+    map_topic: /map
+    costmap_topic: /global_costmap/costmap
+    local_costmap_topic: /local_costmap/costmap
+    navigate_to_pose_action_name: navigate_to_pose
+    global_frame: map
+
+    # IMPORTANT: your URDF uses base_link, not base_footprint
+    robot_base_frame: base_link
+
+    frontier_marker_topic: /explore/frontiers
+    selected_frontier_topic: /explore/selected_frontier
+    optimized_map_topic: /explore/optimized_map
+    completion_event_topic: exploration_complete
+    frontier_marker_scale: 0.15
+
+    # --------------- QoS ------------------------------------------- #
+
+    # SLAM Toolbox publishes /map as transient_local — must match here
+    map_qos_durability: transient_local
+    map_qos_reliability: reliable
+    map_qos_depth: 1
+    map_qos_autodetect_on_startup: false
+    map_qos_autodetect_timeout_s: 5.0
+
+    costmap_qos_reliability: reliable
+    costmap_qos_depth: 10
+    local_costmap_qos_reliability: inherit
+    local_costmap_qos_depth: -1
+
+    # --------------- GENERAL --------------------------------------- #
+
+    # 1 Hz refresh — matches your LiDAR (10 Hz) and map update (2 s)
+    map_processing_rate_hz: 1.0
+
+    # Start exploring immediately when the node comes up
+    autostart: true
+
+    control_service_enabled: false
+    completion_event_enabled: true
+
+    # Escape mode: useful while the map is still very small at startup
+    escape_enabled: true
+
+    # Do not return to start when done — just stop
+    return_to_start_on_complete: false
+
+    # DP solver: smarter path ordering, low overhead
+    mrtsp_solver: dp
+    dp_solver_candidate_limit: 12
+    dp_planning_horizon: 8
+
+    frontier_map_optimization_enabled: true
+
+    # Replan mid-navigation when a better frontier appears
+    goal_preemption_enabled: true
+    goal_preemption_min_interval_s: 2.0
+
+    # Skip a goal that becomes blocked (wall, costmap inflation)
+    goal_skip_on_blocked_goal: true
+
+    # Settle briefly after each goal — helps SLAM catch up
+    post_goal_settle_enabled: true
+    post_goal_min_settle: 1.50
+
+    # Suppress frontiers that repeatedly fail
+    frontier_suppression_enabled: true
+    all_frontiers_suppressed_behavior: return_to_start
+
+    # --------------- MRTSP SCORING --------------------------------- #
+
+    # Balanced distance vs. information gain
+    weight_distance_wd: 1.0
+    weight_gain_ws: 1.0
+
+    # Match your robot's conservative Nav2 speed limits
+    max_linear_speed_vmax: 0.80
+    max_angular_speed_wmax: 2.0
+
+    # Your LiDAR effective range for scoring (slightly under max)
+    sensor_effective_range_m: 6.0
+
+    # --------------- NAVIGATION SAFETY ----------------------------- #
+
+    # Min dispatch distance: 2.5× robot_radius (0.38 × 2.5 = 0.95)
+    frontier_selection_min_distance: 0.95
+
+    # Visit tolerance — prevents re-visiting same area
+    frontier_visit_tolerance: 0.40
+
+    # --------------- MAP OPTIMIZATION ------------------------------ #
+
+    # Min goal distance: 2.5× robot_radius
+    frontier_candidate_min_goal_distance_m: 0.95
+
+    # Occupancy threshold — cells above this cost are blocked
+    # 65 works well with inflation_radius 0.55 m in nav2_params.yaml
+    occ_threshold: 65
+
+    # Min frontier cluster size in cells (5 cells × 0.05 m = 0.25 m)
+    min_frontier_size_cells: 5
+
+    # Bilateral filter — smooths map before frontier extraction
+    sigma_s: 2.0
+    sigma_r: 30.0
+
+    # Dilation after filtering — helps bridge thin gaps
+    dilation_kernel_radius_cells: 1
+
+    # --------------- PREEMPTION ------------------------------------ #
+
+    # Consider goal reached when within 0.5 m
+    goal_preemption_complete_if_within_m: 0.50
+
+    # Match your LiDAR: 8.0 m range, 360° FOV
+    goal_preemption_lidar_range_m: 8.0
+    goal_preemption_lidar_fov_deg: 360.0
+    goal_preemption_lidar_ray_step_deg: 1.0
+    goal_preemption_lidar_min_reveal_length_m: 0.5
+    goal_preemption_lidar_yaw_offset_deg: 0.0
+
+    # --------------- SUPPRESSION ----------------------------------- #
+
+    frontier_suppression_attempt_threshold: 2
+    frontier_suppression_base_size_m: 1.0
+    frontier_suppression_expansion_size_m: 0.5
+    frontier_suppression_timeout_s: 90.0
+    frontier_suppression_no_progress_timeout_s: 20.0
+    frontier_suppression_progress_epsilon_m: 0.25
+    frontier_suppression_startup_grace_period_s: 15.0
+    frontier_suppression_max_attempt_records: 256
+    frontier_suppression_max_regions: 64

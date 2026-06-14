@@ -1,0 +1,383 @@
+# ============================================================
+# nav2_params.yaml
+# Tuned for amr_description — Jazzy + Gazebo Harmonic
+#
+# Robot specifics pulled from your URDF / config:
+#   base_frame    : base_link
+#   odom_frame    : odom
+#   map_frame     : map
+#   cmd_vel topic : /diff_drive_controller/cmd_vel  (TwistStamped)
+#   odom topic    : /odometry/filtered              (from EKF)
+#   scan topic    : /scan                           (360° LiDAR, 8 m max)
+#   wheel sep.    : 0.37128 m
+#   wheel radius  : 0.065 m
+#   max lin vel   : 1.0 m/s   (from controllers.yaml)
+#   max ang vel   : 4.0 rad/s (from controllers.yaml)
+#   LiDAR range   : 0.12 – 8.0 m, 360 samples at 10 Hz
+#   costmap res   : 0.05 m    (matches SLAM Toolbox resolution)
+# ============================================================
+
+# ------------------------------------------------------------
+# BT Navigator
+# ------------------------------------------------------------
+bt_navigator:
+  ros__parameters:
+    use_sim_time: True
+    global_frame: map
+    robot_base_frame: base_link
+    odom_topic: /odometry/filtered
+    # Jazzy: cmd_vel is TwistStamped — must match controller_server below
+    enable_stamped_cmd_vel: True
+    bt_loop_duration: 10
+    default_server_timeout: 20
+    # Wait 3 s for the action servers to be ready after lifecycle activation
+    wait_for_service_timeout: 1000
+    action_server_result_timeout: 900.0
+    navigators: ['navigate_to_pose', 'navigate_through_poses']
+    navigate_to_pose:
+      plugin: "nav2_bt_navigator::NavigateToPoseNavigator"
+    navigate_through_poses:
+      plugin: "nav2_bt_navigator::NavigateThroughPosesNavigator"
+    # Default BT — handles replanning + recovery automatically
+    default_nav_to_pose_bt_xml: "/opt/ros/jazzy/share/nav2_bt_navigator/behavior_trees/navigate_to_pose_w_replanning_and_recovery.xml"
+    default_nav_through_poses_bt_xml: "/opt/ros/jazzy/share/nav2_bt_navigator/behavior_trees/navigate_through_poses_w_replanning_and_recovery.xml"
+    error_code_names:
+      - compute_path_error_code
+      - follow_path_error_code
+
+# ------------------------------------------------------------
+# Planner Server  (NavFn — reliable, fast, works with unknown space)
+# ------------------------------------------------------------
+planner_server:
+  ros__parameters:
+    use_sim_time: True
+    expected_planner_frequency: 10.0
+    planner_plugins: ["GridBased"]
+    GridBased:
+      plugin: "nav2_navfn_planner::NavfnPlanner"
+      tolerance: 0.5
+      use_astar: false
+      # CRITICAL for exploration: allows planning into unmapped (gray) areas
+      allow_unknown: true
+
+# ------------------------------------------------------------
+# Controller Server  (DWB local planner)
+# Velocities capped conservatively below your hardware limits.
+# enable_stamped_cmd_vel MUST be True — your diff_drive_controller
+# expects TwistStamped on /diff_drive_controller/cmd_vel.
+# ------------------------------------------------------------
+controller_server:
+  ros__parameters:
+    use_sim_time: True
+    controller_frequency: 10.0      # matches LiDAR update rate
+    # Jazzy requirement — your robot already uses TwistStamped
+    enable_stamped_cmd_vel: True
+    min_x_velocity_threshold: 0.001
+    min_y_velocity_threshold: 0.5
+    min_theta_velocity_threshold: 0.001
+    failure_tolerance: 0.3
+    progress_checker_plugin: "progress_checker"
+    goal_checker_plugins: ["general_goal_checker"]
+    controller_plugins: ["FollowPath"]
+
+    progress_checker:
+      plugin: "nav2_controller::SimpleProgressChecker"
+      required_movement_radius: 0.5
+      movement_time_allowance: 10.0
+
+    general_goal_checker:
+      stateful: True
+      plugin: "nav2_controller::SimpleGoalChecker"
+      xy_goal_tolerance: 0.25
+      yaw_goal_tolerance: 0.25
+
+    FollowPath:
+      plugin: "dwb_core::DWBLocalPlanner"
+      debug_trajectory_details: True
+      # Velocity limits — 80 % of hardware max for safety margin
+      min_vel_x: 0.0
+      min_vel_y: 0.0
+      max_vel_x: 0.8
+      max_vel_y: 0.0
+      max_vel_theta: 2.0
+      min_speed_xy: 0.0
+      max_speed_xy: 0.8
+      min_speed_theta: 0.0
+      # Acceleration limits match controllers.yaml exactly
+      acc_lim_x: 1.0
+      acc_lim_y: 0.0
+      acc_lim_theta: 3.0
+      decel_lim_x: -1.0
+      decel_lim_y: 0.0
+      decel_lim_theta: -3.0
+      # Sampling
+      vx_samples: 20
+      vy_samples: 5
+      vtheta_samples: 20
+      sim_time: 1.7
+      linear_granularity: 0.05
+      angular_granularity: 0.025
+      transform_tolerance: 0.2
+      xy_goal_tolerance: 0.25
+      trans_stopped_velocity: 0.25
+      short_circuit_trajectory_evaluation: True
+      stateful: True
+      critics:
+        - "RotateToGoal"
+        - "Oscillation"
+        - "BaseObstacle"
+        - "GoalAlign"
+        - "PathAlign"
+        - "PathDist"
+        - "GoalDist"
+      BaseObstacle.scale: 0.2
+      PathAlign.scale: 32.0
+      PathAlign.forward_point_distance: 0.1
+      GoalAlign.scale: 24.0
+      GoalAlign.forward_point_distance: 0.1
+      PathDist.scale: 32.0
+      GoalDist.scale: 24.0
+      RotateToGoal.scale: 32.0
+      RotateToGoal.slowing_factor: 5.0
+      RotateToGoal.lookahead_time: -1.0
+
+# ------------------------------------------------------------
+# Local Costmap  (rolling window around the robot)
+# Uses /scan for live obstacle detection and clearing.
+# robot_radius set to 0.38 m — slightly larger than the robot's
+# actual half-width (0.37128 / 2 ≈ 0.186 m) to include the body.
+# ------------------------------------------------------------
+local_costmap:
+  local_costmap:
+    ros__parameters:
+      use_sim_time: True
+      update_frequency: 10.0     # matches LiDAR rate
+      publish_frequency: 5.0
+      global_frame: odom
+      robot_base_frame: base_link
+      rolling_window: true
+      width: 4
+      height: 4
+      resolution: 0.05           # matches SLAM Toolbox resolution
+      robot_radius: 0.38
+      plugins: ["voxel_layer", "inflation_layer"]
+      voxel_layer:
+        plugin: "nav2_costmap_2d::VoxelLayer"
+        enabled: True
+        publish_voxel_map: True
+        origin_z: 0.0
+        z_resolution: 0.05
+        z_voxels: 16
+        max_obstacle_height: 2.0
+        mark_threshold: 0
+        observation_sources: scan
+        scan:
+          topic: /scan
+          max_obstacle_height: 2.0
+          clearing: True
+          marking: True
+          data_type: "LaserScan"
+          raytrace_max_range: 7.5   # just under LiDAR max (8.0 m)
+          raytrace_min_range: 0.0
+          obstacle_max_range: 5.5
+          obstacle_min_range: 0.0
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"
+        cost_scaling_factor: 4.0
+        inflation_radius: 0.3
+      always_send_full_costmap: True
+
+# ------------------------------------------------------------
+# Global Costmap  (full map for path planning)
+# Combines the static SLAM map + live LiDAR obstacles.
+# track_unknown_space: true required for frontier exploration —
+# unknown cells must stay gray (not treated as free or lethal).
+# ------------------------------------------------------------
+global_costmap:
+  global_costmap:
+    ros__parameters:
+      use_sim_time: True
+      update_frequency: 1.0
+      publish_frequency: 1.0
+      global_frame: map
+      robot_base_frame: base_link
+      robot_radius: 0.38
+      resolution: 0.05
+      # CRITICAL for exploration: keeps unknown space gray (not free)
+      track_unknown_space: true
+      plugins: ["static_layer", "obstacle_layer", "inflation_layer"]
+      static_layer:
+        plugin: "nav2_costmap_2d::StaticLayer"
+        map_subscribe_transient_local: True
+        enabled: True
+        subscribe_to_updates: True
+        map_topic: /map
+      obstacle_layer:
+        plugin: "nav2_costmap_2d::ObstacleLayer"
+        enabled: True
+        observation_sources: scan
+        scan:
+          topic: /scan
+          max_obstacle_height: 2.0
+          clearing: True
+          marking: True
+          data_type: "LaserScan"
+          raytrace_max_range: 7.5
+          raytrace_min_range: 0.0
+          obstacle_max_range: 5.5
+          obstacle_min_range: 0.0
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"
+        cost_scaling_factor: 4.0
+        inflation_radius: 0.3    
+      always_send_full_costmap: True
+
+# ------------------------------------------------------------
+# Behavior Server  (Jazzy name — was "recoveries_server" in older distros)
+# Handles spin-in-place, back-up, wait when the robot gets stuck.
+# enable_stamped_cmd_vel must match the controller server above.
+# ------------------------------------------------------------
+behavior_server:
+  ros__parameters:
+    use_sim_time: True
+    local_costmap_topic: local_costmap/costmap_raw
+    global_costmap_topic: global_costmap/costmap_raw
+    local_footprint_topic: local_costmap/published_footprint
+    global_footprint_topic: global_costmap/published_footprint
+    cycle_frequency: 10.0
+    # Jazzy requirement
+    enable_stamped_cmd_vel: True
+    behavior_plugins: ["spin", "backup", "drive_on_heading", "wait", "assisted_teleop"]
+    spin:
+      plugin: "nav2_behaviors::Spin"
+    backup:
+      plugin: "nav2_behaviors::BackUp"
+    drive_on_heading:
+      plugin: "nav2_behaviors::DriveOnHeading"
+    wait:
+      plugin: "nav2_behaviors::Wait"
+    assisted_teleop:
+      plugin: "nav2_behaviors::AssistedTeleop"
+    # Spin recovery params — angular vel well within your 4.0 rad/s limit
+    simulate_ahead_time: 2.0
+    max_rotational_vel: 1.0
+    min_rotational_vel: 0.4
+    rotational_acc_lim: 3.0
+
+# ------------------------------------------------------------
+# Smoother Server  (optional but included — smooths jerky paths)
+# ------------------------------------------------------------
+smoother_server:
+  ros__parameters:
+    use_sim_time: True
+    smoother_plugins: ["simple_smoother"]
+    simple_smoother:
+      plugin: "nav2_smoother::SimpleSmoother"
+      tolerance: 1.0e-10
+      max_its: 1000
+      do_refinement: True
+
+# ------------------------------------------------------------
+# Velocity Smoother  (ramps cmd_vel — reduces wheel slip on your robot)
+# ------------------------------------------------------------
+velocity_smoother:
+  ros__parameters:
+    use_sim_time: True
+    smoothing_frequency: 20.0
+    scale_velocities: False
+    # Jazzy requirement
+    enable_stamped_cmd_vel: True
+    feedback: "OPEN_LOOP"
+    max_velocity: [0.8, 0.0, 2.0]
+    min_velocity: [-0.8, 0.0, -2.0]
+    max_accel: [1.0, 0.0, 3.0]
+    max_decel: [-1.0, 0.0, -3.0]
+    odom_topic: /odometry/filtered
+    odom_duration: 0.1
+    deadband_velocity: [0.0, 0.0, 0.0]
+    velocity_timeout: 1.0
+
+# ------------------------------------------------------------
+# Map Server  (used in known-map mode — skip during exploration)
+# ------------------------------------------------------------
+map_server:
+  ros__parameters:
+    use_sim_time: True
+    yaml_filename: ""    # filled at launch time via argument
+
+# ------------------------------------------------------------
+# AMCL  (used in known-map mode — skip during exploration)
+# During exploration, SLAM Toolbox handles localization.
+# ------------------------------------------------------------
+amcl:
+  ros__parameters:
+    use_sim_time: True
+    alpha1: 0.2
+    alpha2: 0.2
+    alpha3: 0.2
+    alpha4: 0.2
+    alpha5: 0.2
+    base_frame_id: "base_link"
+    beam_skip_distance: 0.5
+    beam_skip_error_threshold: 0.9
+    beam_skip_threshold: 0.3
+    do_beamskip: false
+    global_frame_id: "map"
+    lambda_short: 0.1
+    laser_likelihood_max_dist: 2.0
+    laser_max_range: 7.5
+    laser_min_range: 0.12
+    laser_model_type: "likelihood_field"
+    max_beams: 60
+    max_particles: 2000
+    min_particles: 500
+    odom_frame_id: "odom"
+    pf_err: 0.05
+    pf_z: 0.99
+    recovery_alpha_fast: 0.0
+    recovery_alpha_slow: 0.0
+    resample_interval: 1
+    robot_model_type: "nav2_amcl::DifferentialMotionModel"
+    save_pose_rate: 0.5
+    sigma_hit: 0.2
+    tf_broadcast: true
+    transform_tolerance: 1.0
+    update_min_a: 0.2
+    update_min_d: 0.25
+    z_hit: 0.5
+    z_max: 0.05
+    z_rand: 0.5
+    z_short: 0.05
+    scan_topic: /scan
+    map_topic: /map
+    set_initial_pose: false
+    always_reset_initial_pose: false
+
+# ------------------------------------------------------------
+# Lifecycle Manager — Navigation
+# Controls the Nav2 nodes that run during BOTH exploration
+# and known-map navigation.
+# ------------------------------------------------------------
+lifecycle_manager:
+  ros__parameters:
+    use_sim_time: True
+    autostart: True
+    node_names:
+      - planner_server
+      - controller_server
+      - behavior_server
+      - smoother_server
+      - velocity_smoother
+      - bt_navigator
+
+# ------------------------------------------------------------
+# Lifecycle Manager — Localization (known-map mode only)
+# A separate manager so you can swap localization independently.
+# ------------------------------------------------------------
+lifecycle_manager_localization:
+  ros__parameters:
+    use_sim_time: True
+    autostart: True
+    node_names:
+      - map_server
+      - amcl

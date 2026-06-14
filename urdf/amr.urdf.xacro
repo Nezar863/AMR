@@ -18,17 +18,21 @@
   <!-- BASE LINK                                                     -->
   <!-- =========================================================== -->
   <!--
-    Mass kept at 5.8kg (original) — SolidWorks exported 40.59kg because
-    it used wrong material density. 5.8kg is the correct real-world value.
-    Inertia values updated from SolidWorks (more accurate geometry).
+    Mass updated to 8.0 kg.
+    Inertia rescaled from original SolidWorks values (18.71 kg) by factor
+    (8.0 / 18.71 = 0.4277). This preserves the correct shape ratios from
+    the accurate SW geometry while applying the new mass.
+      ixx = 0.3986 * 0.4277 = 0.1705
+      iyy = 1.092  * 0.4277 = 0.4671
+      izz = 1.337  * 0.4277 = 0.5718
   -->
   <link name="base_link">
     <inertial>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <mass value="18.71"/>
-      <inertia ixx="0.3986" ixy="0"      ixz="0"
-               iyy="1.092"  iyz="0"
-               izz="1.337"/>
+      <mass value="8.0"/>
+      <inertia ixx="0.1705" ixy="0"      ixz="0"
+               iyy="0.4671"  iyz="0"
+               izz="0.5718"/>
     </inertial>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
@@ -53,60 +57,78 @@
   <!-- FRONT LEFT WHEEL                                             -->
   <!-- =========================================================== -->
   <!--
-    Joint origin: updated xyz from SolidWorks (z=0.012464, same as before).
-    Joint rpy: SolidWorks gave rpy="1.5708 0 3.1416" — kept as-is, it is
-    equivalent to the old rpy="1.5708 0 0" for wheel orientation purposes.
-    Axis: SolidWorks gave "0 0 1" for left wheels with rpy including 3.1416
-    (180 degree flip) — this naturally mirrors the axis direction.
-    Collision: kept as cylinder (more stable than mesh for physics).
+    Mass updated to 0.17 kg.
+    Inertia calculated analytically for a solid cylinder:
+      radius r = 0.065 m,  length l = 0.05 m
+      ixx = iyy = m/12 * (3*r^2 + l^2)
+                = 0.17/12 * (3*0.004225 + 0.0025)
+                = 0.17/12 * 0.015175
+                = 0.000215 kg·m²
+      izz        = m/2 * r^2
+                = 0.17/2 * 0.004225
+                = 0.000359 kg·m²
+    Note: izz is the spin axis (wheel rolling axis) because the joint
+    rpy rotates the cylinder so its geometric Z aligns with the spin axis.
   -->
-
-    <link name="front_left_wheel">
-        <inertial>
-            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-            <mass value="1.0"/>
-            <inertia ixx="0.1" ixy="0.0" ixz="0.0" iyy="0.1" iyz="0.0" izz="0.1"/>
-        </inertial>
-        <visual name="">
-            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-            <geometry>
-                <mesh filename="package://amr_description/meshes/Front_Left_Wheel.STL"/>
-            </geometry>
-            <material name="">
-                <color rgba="0.5 0.2 0.1 1.0"/>
-                <texture filename=""/>
-            </material>
-        </visual>
-        <collision>
-            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-            <geometry>
-                <cylinder radius="0.065" length="0.05"/>
-            </geometry>
-        </collision>
-    </link>
+  <link name="front_left_wheel">
+    <inertial>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <mass value="0.17"/>
+      <inertia ixx="0.000215" ixy="0.0" ixz="0.0"
+               iyy="0.000215" iyz="0.0"
+               izz="0.000359"/>
+    </inertial>
+    <visual name="">
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <geometry>
+        <mesh filename="package://amr_description/meshes/Front_Left_Wheel.STL"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.5 0.2 0.1 1.0"/>
+        <texture filename=""/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <geometry>
+        <cylinder radius="0.065" length="0.05"/>
+      </geometry>
+    </collision>
+  </link>
 
   <joint name="front_left_wheel_joint" type="continuous">
     <parent link="base_link"/>
     <child link="front_left_wheel"/>
     <origin xyz="0.28082 0.18564 0.012464" rpy="1.5708 0 3.1416"/>
     <axis xyz="0 0 1"/>
-    <dynamics damping="0.1" friction="0.1"/>
+    <dynamics damping="0.1" friction="0.5"/>
   </joint>
 
   <gazebo reference="front_left_wheel">
+    <!--
+      Friction tuning to eliminate slipping in Gazebo Harmonic / ODE:
+        mu  (longitudinal, rolling direction)  = 1.5  — high enough to grip
+        mu2 (lateral, side-slip direction)     = 0.5  — was 0.01 which caused
+             the robot to slide sideways; 0.5 is a good AMR value
+        slip1 / slip2 = 0.0                   — explicit no-slip compliance
+        kp = 1e7                               — stiffer contact surface
+        kd = 10.0                              — unchanged damping
+    -->
     <collision>
       <surface>
         <friction>
           <ode>
-            <mu>1.0</mu>
-            <mu2>0.01</mu2>
+            <mu>2.0</mu>
+            <mu2>0.7</mu2>
             <fdir1>1 0 0</fdir1>
+            <slip1>0.0</slip1>
+            <slip2>0.0</slip2>
           </ode>
         </friction>
         <contact>
           <ode>
-            <kp>1e6</kp>
-            <kd>10.0</kd>
+            <kp>1e8</kp>
+            <kd>50.0</kd>
           </ode>
         </contact>
       </surface>
@@ -117,42 +139,41 @@
   <!-- FRONT RIGHT WHEEL                                            -->
   <!-- =========================================================== -->
   <!--
-    Joint rpy: SolidWorks gave rpy="-1.5708 0 -3.1416" for right wheels.
-    This is the natural mirror of the left wheel orientation.
-    Axis: "0 0 1" — combined with the negative rpy this makes the wheel
-    spin in the opposite direction to the left wheel, which is correct
-    for differential drive. No axis swap or multiplier hack needed.
+    Same mass and inertia as front left wheel (symmetric).
+    Same friction parameters applied.
   -->
-    <link name="front_right_wheel">
-        <inertial>
-            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-            <mass value="1.0"/>
-            <inertia ixx="0.1" ixy="0.0" ixz="0.0" iyy="0.1" iyz="0.0" izz="0.1"/>
-        </inertial>
-        <visual name="">
-            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-            <geometry>
-                <mesh filename="package://amr_description/meshes/Front_Right_Wheel.STL"/>
-            </geometry>
-            <material name="">
-                <color rgba="0.5 0.2 0.1 1.0"/>
-                <texture filename=""/>
-            </material>
-        </visual>
-        <collision>
-            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-            <geometry>
-                <cylinder radius="0.065" length="0.05"/>
-            </geometry>
-        </collision>
-    </link>
+  <link name="front_right_wheel">
+    <inertial>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <mass value="0.17"/>
+      <inertia ixx="0.000215" ixy="0.0" ixz="0.0"
+               iyy="0.000215" iyz="0.0"
+               izz="0.000359"/>
+    </inertial>
+    <visual name="">
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <geometry>
+        <mesh filename="package://amr_description/meshes/Front_Right_Wheel.STL"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.5 0.2 0.1 1.0"/>
+        <texture filename=""/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <geometry>
+        <cylinder radius="0.065" length="0.05"/>
+      </geometry>
+    </collision>
+  </link>
 
   <joint name="front_right_wheel_joint" type="continuous">
     <parent link="base_link"/>
     <child link="front_right_wheel"/>
     <origin xyz="0.28082 -0.18564 0.012464" rpy="-1.5708 0 -3.1416"/>
     <axis xyz="0 0 -1"/>
-    <dynamics damping="0.1" friction="0.1"/>
+    <dynamics damping="0.1" friction="0.5"/>
   </joint>
 
   <gazebo reference="front_right_wheel">
@@ -160,15 +181,17 @@
       <surface>
         <friction>
           <ode>
-            <mu>1.0</mu>
-            <mu2>0.01</mu2>
+            <mu>2.0</mu>
+            <mu2>0.7</mu2>
             <fdir1>1 0 0</fdir1>
+            <slip1>0.0</slip1>
+            <slip2>0.0</slip2>
           </ode>
         </friction>
         <contact>
           <ode>
-            <kp>1e6</kp>
-            <kd>10.0</kd>
+            <kp>1e8</kp>
+            <kd>50.0</kd>
           </ode>
         </contact>
       </surface>
@@ -178,36 +201,42 @@
   <!-- =========================================================== -->
   <!-- BACK LEFT WHEEL                                              -->
   <!-- =========================================================== -->
-    <link name="back_left_wheel">
-        <inertial>
-            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-            <mass value="1.0"/>
-            <inertia ixx="0.1" ixy="0.0" ixz="0.0" iyy="0.1" iyz="0.0" izz="0.1"/>
-        </inertial>
-        <visual name="">
-            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-            <geometry>
-              <mesh filename="package://amr_description/meshes/Back_Left_Wheel.STL"/>
-            </geometry>
-            <material name="">
-                <color rgba="0.5 0.2 0.1 1.0"/>
-                <texture filename=""/>
-            </material>
-        </visual>
-        <collision>
-            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-            <geometry>
-                <cylinder radius="0.065" length="0.05"/>
-            </geometry>
-        </collision>
-    </link>
+  <!--
+    Same mass and inertia as front wheels (all four wheels identical).
+    Same friction parameters applied.
+  -->
+  <link name="back_left_wheel">
+    <inertial>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <mass value="0.17"/>
+      <inertia ixx="0.000215" ixy="0.0" ixz="0.0"
+               iyy="0.000215" iyz="0.0"
+               izz="0.000359"/>
+    </inertial>
+    <visual name="">
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <geometry>
+        <mesh filename="package://amr_description/meshes/Back_Left_Wheel.STL"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.5 0.2 0.1 1.0"/>
+        <texture filename=""/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <geometry>
+        <cylinder radius="0.065" length="0.05"/>
+      </geometry>
+    </collision>
+  </link>
 
   <joint name="back_left_wheel_joint" type="continuous">
     <parent link="base_link"/>
     <child link="back_left_wheel"/>
     <origin xyz="-0.2789 0.18564 0.014811" rpy="1.5708 0 3.1416"/>
     <axis xyz="0 0 1"/>
-    <dynamics damping="0.1" friction="0.1"/>
+    <dynamics damping="0.1" friction="0.5"/>
   </joint>
 
   <gazebo reference="back_left_wheel">
@@ -215,15 +244,17 @@
       <surface>
         <friction>
           <ode>
-            <mu>1.0</mu>
-            <mu2>0.01</mu2>
+            <mu>2.0</mu>
+            <mu2>0.7</mu2>
             <fdir1>1 0 0</fdir1>
+            <slip1>0.0</slip1>
+            <slip2>0.0</slip2>
           </ode>
         </friction>
         <contact>
           <ode>
-            <kp>1e6</kp>
-            <kd>10.0</kd>
+            <kp>1e8</kp>
+            <kd>50.0</kd>
           </ode>
         </contact>
       </surface>
@@ -234,41 +265,42 @@
   <!-- BACK RIGHT WHEEL                                             -->
   <!-- =========================================================== -->
   <!--
-    Note: SolidWorks exported back right with rpy="1.5708 0 0" which is
-    different from the other right wheel rpy="-1.5708 0 -3.1416".
-    This looks like a SolidWorks export inconsistency — we use the same
-    mirrored rpy as front right to keep both right wheels consistent.
+    Same mass and inertia as other wheels.
+    rpy kept as "-1.5708 0 -3.1416" (corrected from SW inconsistency,
+    same as front_right to keep both right wheels consistent).
   -->
-    <link name="back_right_wheel">
-        <inertial>
-            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-            <mass value="1.0"/>
-            <inertia ixx="0.1" ixy="0.0" ixz="0.0" iyy="0.1" iyz="0.0" izz="0.1"/>
-        </inertial>
-        <visual name="">
-            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-            <geometry>
-                <mesh filename="package://amr_description/meshes/Back_Right_Wheel.STL"/>
-            </geometry>
-            <material name="">
-                <color rgba="0.5 0.2 0.1 1.0"/>
-                <texture filename=""/>
-            </material>
-        </visual>
-        <collision>
-            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
-            <geometry>
-                <cylinder radius="0.065" length="0.05"/>
-            </geometry>
-        </collision>
-    </link>
+  <link name="back_right_wheel">
+    <inertial>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <mass value="0.17"/>
+      <inertia ixx="0.000215" ixy="0.0" ixz="0.0"
+               iyy="0.000215" iyz="0.0"
+               izz="0.000359"/>
+    </inertial>
+    <visual name="">
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <geometry>
+        <mesh filename="package://amr_description/meshes/Back_Right_Wheel.STL"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.5 0.2 0.1 1.0"/>
+        <texture filename=""/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+      <geometry>
+        <cylinder radius="0.065" length="0.05"/>
+      </geometry>
+    </collision>
+  </link>
 
   <joint name="back_right_wheel_joint" type="continuous">
     <parent link="base_link"/>
     <child link="back_right_wheel"/>
     <origin xyz="-0.2789 -0.18564 0.014811" rpy="-1.5708 0 -3.1416"/>
     <axis xyz="0 0 -1"/>
-    <dynamics damping="0.1" friction="0.1"/>
+    <dynamics damping="0.1" friction="0.5"/>
   </joint>
 
   <gazebo reference="back_right_wheel">
@@ -276,15 +308,17 @@
       <surface>
         <friction>
           <ode>
-            <mu>1.0</mu>
-            <mu2>0.01</mu2>
+            <mu>2.0</mu>
+            <mu2>0.7</mu2>
             <fdir1>1 0 0</fdir1>
+            <slip1>0.0</slip1>
+            <slip2>0.0</slip2>
           </ode>
         </friction>
         <contact>
           <ode>
-            <kp>1e6</kp>
-            <kd>10.0</kd>
+            <kp>1e8</kp>
+            <kd>50.0</kd>
           </ode>
         </contact>
       </surface>
@@ -364,7 +398,7 @@
   <!-- =========================================================== -->
   <!--
     Link name kept as imu_link (not IMU_Link) to match bridge config.
-    Inertia updated from SolidWorks values.
+    Inertia unchanged (mass unchanged).
   -->
   <link name="imu_link">
     <inertial>
