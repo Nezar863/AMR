@@ -81,6 +81,9 @@
   <depend>action_msgs</depend>
   <depend>std_msgs</depend>
 
+  <!-- Python client library — required by scripts/battery_manager_node.py -->
+  <depend>rclpy</depend>
+
   <!-- Launch -->
   <depend>launch</depend>
   <depend>launch_ros</depend>

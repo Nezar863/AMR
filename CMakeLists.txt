@@ -29,6 +29,17 @@ install(
 )
 
 # -----------------------------------------------------------------------
+# Install Python scripts/nodes so they can be run with `ros2 run` /
+# referenced by package name from launch files (e.g. battery_manager_node.py)
+# -----------------------------------------------------------------------
+install(
+  PROGRAMS
+    scripts/battery_manager_node.py
+    scripts/return_to_start_node.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+# -----------------------------------------------------------------------
 # Testing
 # -----------------------------------------------------------------------
 if(BUILD_TESTING)

@@ -54,7 +54,7 @@ def generate_launch_description():
     urdf_path = os.path.join(pkg, 'urdf', 'amr.urdf.xacro')
     robot_description = subprocess.check_output(['xacro', urdf_path]).decode()
 
-    world_file  = os.path.join(pkg, 'worlds', 'maze2.sdf')
+    world_file  = os.path.join(pkg, 'worlds', 'apartment.world')
 
     # CHANGED: use slam_rviz.rviz so the map, scan, costmaps, and planned
     # path are all visible during autonomous operation.

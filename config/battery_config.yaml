@@ -1,0 +1,34 @@
+# config/battery_config.yaml
+# -----------------------------------------------------------------
+# Parameters for battery_manager_node.
+# These tune the virtual battery model and the topic names used to
+# integrate with the existing exploration + Nav2 stack.
+# -----------------------------------------------------------------
+
+battery_manager_node:
+  ros__parameters:
+
+    # --------------- INTEGRATION TOPICS -----------------------------
+    # Must match frontier_explorer_params.yaml -> completion_event_topic
+    completion_event_topic: exploration_complete
+
+    # Source of velocity for the battery drain model (EKF output)
+    odom_topic: /odometry/filtered
+
+    # --------------- BATTERY MODEL -----------------------------------
+    # Percent drained per second while the robot is moving
+    # (0.05 = roughly 33 minutes of continuous movement to fully drain)
+    battery_drain_rate_per_sec: 0.05
+
+    # Percent gained per second while CHARGING (1.0 = full charge in ~100s)
+    battery_charge_rate_per_sec: 1.0
+
+    # Linear (m/s) or angular (rad/s) speed below which the robot is
+    # considered "not moving" for drain purposes — filters out EKF noise
+    velocity_noise_threshold: 0.02
+
+    full_battery_value: 100.0
+
+    # Logged as a warning when reached during EXPLORING; does not yet
+    # interrupt exploration (see README — that is the Option C extension)
+    low_battery_threshold: 20.0

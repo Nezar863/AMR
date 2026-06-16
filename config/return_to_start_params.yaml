@@ -1,0 +1,31 @@
+# config/return_to_start_params.yaml
+# ---------------------------------------------------------------
+# Parameters for return_to_start_node.py
+#
+# All values here are the defaults and can be overridden from the
+# command line or from the launch file.
+# ---------------------------------------------------------------
+
+return_to_start_node:
+  ros__parameters:
+    use_sim_time: true
+
+    # Topic on which frontier_exploration_ros2 publishes completion.
+    # Must match 'completion_event_topic' in frontier_explorer_params.yaml.
+    completion_event_topic: "exploration_complete"
+
+    # Nav2 action name — must match the name used in nav2.launch.py
+    nav_action_name: "navigate_to_pose"
+
+    # TF frames — must match your URDF and SLAM Toolbox config
+    map_frame:   "map"
+    robot_frame: "base_link"
+
+    # How long to wait for a valid TF transform on each poll attempt (seconds).
+    # Increase if SLAM Toolbox takes longer to initialise in your setup.
+    tf_lookup_timeout_sec: 5.0
+
+    # How long to wait for the navigate_to_pose action server (seconds).
+    # If Nav2 is not up within this window, the node logs an error and
+    # enters FAILED state rather than blocking forever.
+    nav_server_timeout_sec: 15.0
