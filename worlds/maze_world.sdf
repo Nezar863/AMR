@@ -1,0 +1,296 @@
+<?xml version="1.0" ?>
+<sdf version="1.8">
+  <world name="maze">
+
+    <!-- Physics parameters for better simulation -->
+    <physics name="default_physics" type="ode">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+      <real_time_update_rate>1000</real_time_update_rate>
+    </physics>
+
+    <!-- Required plugins for sensor data and robot operation -->
+    <plugin filename="gz-sim-physics-system" name="gz::sim::v8::systems::Physics"/>
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::v8::systems::SceneBroadcaster"/>
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::v8::systems::UserCommands"/>
+    
+    <!-- CRITICAL: Sensors plugin - needed for lidar, camera, IMU data -->
+    <plugin filename="gz-sim-sensors-system" name="gz::sim::v8::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+    
+    <!-- IMU system for inertial measurements -->
+    <plugin filename="gz-sim-imu-system" name="gz::sim::v8::systems::Imu"/>
+    
+    <!-- Contact system for collision detection -->
+    <plugin filename="gz-sim-contact-system" name="gz::sim::v8::systems::Contact"/>
+
+    <!-- Lighting -->
+    <light name="sun" type="directional">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>1 1 1 1</diffuse>
+      <specular>0.5 0.5 0.5 1</specular>
+      <direction>-0.5 0.1 -0.9</direction>
+    </light>
+
+    <!-- Ground plane -->
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry><plane><normal>0 0 1</normal><size>30 30</size></plane></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><plane><normal>0 0 1</normal><size>30 30</size></plane></geometry>
+          <material>
+            <ambient>0.7 0.7 0.7 1</ambient>
+            <diffuse>0.7 0.7 0.7 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ============================================= -->
+    <!-- OUTER WALLS (boundary of the maze)            -->
+    <!-- ============================================= -->
+    
+    <model name="wall_north">
+      <static>true</static>
+      <pose>0 8 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>16 0.3 1</size></box></geometry></collision>
+        <visual name="v">
+          <geometry><box><size>16 0.3 1</size></box></geometry>
+          <material><ambient>0.6 0.4 0.2 1</ambient><diffuse>0.6 0.4 0.2 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="wall_south">
+      <static>true</static>
+      <pose>0 -8 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>16 0.3 1</size></box></geometry></collision>
+        <visual name="v">
+          <geometry><box><size>16 0.3 1</size></box></geometry>
+          <material><ambient>0.6 0.4 0.2 1</ambient><diffuse>0.6 0.4 0.2 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="wall_east">
+      <static>true</static>
+      <pose>8 0 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>0.3 16 1</size></box></geometry></collision>
+        <visual name="v">
+          <geometry><box><size>0.3 16 1</size></box></geometry>
+          <material><ambient>0.6 0.4 0.2 1</ambient><diffuse>0.6 0.4 0.2 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="wall_west">
+      <static>true</static>
+      <pose>-8 0 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>0.3 16 1</size></box></geometry></collision>
+        <visual name="v">
+          <geometry><box><size>0.3 16 1</size></box></geometry>
+          <material><ambient>0.6 0.4 0.2 1</ambient><diffuse>0.6 0.4 0.2 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ============================================= -->
+    <!-- INNER WALLS (maze corridors)                  -->
+    <!-- All walls avoid the center area (-2 to 2)    -->
+    <!-- ============================================= -->
+
+    <!-- Top-left corridor wall -->
+    <model name="inner_wall_1">
+      <static>true</static>
+      <pose>-4 4 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>3 0.3 1</size></box></geometry></collision>
+        <visual name="v">
+          <geometry><box><size>3 0.3 1</size></box></geometry>
+          <material><ambient>0.8 0.5 0.9 1</ambient><diffuse>0.8 0.5 0.9 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Top-right corridor wall -->
+    <model name="inner_wall_2">
+      <static>true</static>
+      <pose>4 4 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>3 0.3 1</size></box></geometry></collision>
+        <visual name="v">
+          <geometry><box><size>3 0.3 1</size></box></geometry>
+          <material><ambient>0.8 0.5 0.9 1</ambient><diffuse>0.8 0.5 0.9 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Bottom-left corridor wall -->
+    <model name="inner_wall_3">
+      <static>true</static>
+      <pose>-4 -4 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>3 0.3 1</size></box></geometry></collision>
+        <visual name="v">
+          <geometry><box><size>3 0.3 1</size></box></geometry>
+          <material><ambient>0.8 0.5 0.9 1</ambient><diffuse>0.8 0.5 0.9 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Bottom-right corridor wall -->
+    <model name="inner_wall_4">
+      <static>true</static>
+      <pose>4 -4 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>3 0.3 1</size></box></geometry></collision>
+        <visual name="v">
+          <geometry><box><size>3 0.3 1</size></box></geometry>
+          <material><ambient>0.8 0.5 0.9 1</ambient><diffuse>0.8 0.5 0.9 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Vertical wall on left side (top) -->
+    <model name="inner_wall_5">
+      <static>true</static>
+      <pose>-5 2 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>0.3 3 1</size></box></geometry></collision>
+        <visual name="v">
+          <geometry><box><size>0.3 3 1</size></box></geometry>
+          <material><ambient>0.8 0.5 0.9 1</ambient><diffuse>0.8 0.5 0.9 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Vertical wall on left side (bottom) -->
+    <model name="inner_wall_6">
+      <static>true</static>
+      <pose>-5 -2 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>0.3 3 1</size></box></geometry></collision>
+        <visual name="v">
+          <geometry><box><size>0.3 3 1</size></box></geometry>
+          <material><ambient>0.8 0.5 0.9 1</ambient><diffuse>0.8 0.5 0.9 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Vertical wall on right side (top) -->
+    <model name="inner_wall_7">
+      <static>true</static>
+      <pose>5 2 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>0.3 3 1</size></box></geometry></collision>
+        <visual name="v">
+          <geometry><box><size>0.3 3 1</size></box></geometry>
+          <material><ambient>0.8 0.5 0.9 1</ambient><diffuse>0.8 0.5 0.9 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Vertical wall on right side (bottom) -->
+    <model name="inner_wall_8">
+      <static>true</static>
+      <pose>5 -2 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>0.3 3 1</size></box></geometry></collision>
+        <visual name="v">
+          <geometry><box><size>0.3 3 1</size></box></geometry>
+          <material><ambient>0.8 0.5 0.9 1</ambient><diffuse>0.8 0.5 0.9 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Horizontal wall in top-middle area (avoids center) -->
+    <model name="inner_wall_9">
+      <static>true</static>
+      <pose>0 6 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>4 0.3 1</size></box></geometry></collision>
+        <visual name="v">
+          <geometry><box><size>4 0.3 1</size></box></geometry>
+          <material><ambient>0.8 0.5 0.9 1</ambient><diffuse>0.8 0.5 0.9 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Horizontal wall in bottom-middle area (avoids center) -->
+    <model name="inner_wall_10">
+      <static>true</static>
+      <pose>0 -6 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>4 0.3 1</size></box></geometry></collision>
+        <visual name="v">
+          <geometry><box><size>4 0.3 1</size></box></geometry>
+          <material><ambient>0.8 0.5 0.9 1</ambient><diffuse>0.8 0.5 0.9 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Small obstacles placed AWAY from center (corners only) -->
+    
+    <!-- Top-left corner obstacle -->
+    <model name="obs_corner_tl">
+      <static>true</static>
+      <pose>-6 6 0.3 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>1 1 0.6</size></box></geometry></collision>
+        <visual name="v">
+          <geometry><box><size>1 1 0.6</size></box></geometry>
+          <material><ambient>0.2 0.7 0.3 1</ambient><diffuse>0.2 0.7 0.3 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Top-right corner obstacle -->
+    <model name="obs_corner_tr">
+      <static>true</static>
+      <pose>6 6 0.3 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>1 1 0.6</size></box></geometry></collision>
+        <visual name="v">
+          <geometry><box><size>1 1 0.6</size></box></geometry>
+          <material><ambient>0.2 0.7 0.3 1</ambient><diffuse>0.2 0.7 0.3 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Bottom-left corner obstacle -->
+    <model name="obs_corner_bl">
+      <static>true</static>
+      <pose>-6 -6 0.3 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>1 1 0.6</size></box></geometry></collision>
+        <visual name="v">
+          <geometry><box><size>1 1 0.6</size></box></geometry>
+          <material><ambient>0.2 0.7 0.3 1</ambient><diffuse>0.2 0.7 0.3 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Bottom-right corner obstacle -->
+    <model name="obs_corner_br">
+      <static>true</static>
+      <pose>6 -6 0.3 0 0 0</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>1 1 0.6</size></box></geometry></collision>
+        <visual name="v">
+          <geometry><box><size>1 1 0.6</size></box></geometry>
+          <material><ambient>0.2 0.7 0.3 1</ambient><diffuse>0.2 0.7 0.3 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+  </world>
+</sdf>

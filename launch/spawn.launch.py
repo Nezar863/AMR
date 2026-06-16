@@ -42,13 +42,19 @@ def generate_launch_description():
     else:
         os.environ['GZ_SIM_RESOURCE_PATH'] = ':'.join(install_description_dir_path)
 
+    # Add Fuel cache so Gazebo can resolve assets from downloaded Fuel worlds
+    fuel_cache = os.path.expanduser('~/.gz/fuel')
+    if fuel_cache not in os.environ.get('GZ_SIM_RESOURCE_PATH', ''):
+        os.environ['GZ_SIM_RESOURCE_PATH'] = \
+            os.environ.get('GZ_SIM_RESOURCE_PATH', '') + ':' + fuel_cache
+
     # ------------------------------------------------------------------ #
     # 1. Parse URDF (xacro → string)
     # ------------------------------------------------------------------ #
     urdf_path = os.path.join(pkg, 'urdf', 'amr.urdf.xacro')
     robot_description = subprocess.check_output(['xacro', urdf_path]).decode()
 
-    world_file  = os.path.join(pkg, 'worlds', 'apartment.world')
+    world_file  = os.path.join(pkg, 'worlds', 'maze2.sdf')
 
     # CHANGED: use slam_rviz.rviz so the map, scan, costmaps, and planned
     # path are all visible during autonomous operation.

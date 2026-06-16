@@ -130,7 +130,7 @@ controller_server:
         - "PathAlign"
         - "PathDist"
         - "GoalDist"
-      BaseObstacle.scale: 0.2
+      BaseObstacle.scale: 0.3
       PathAlign.scale: 32.0
       PathAlign.forward_point_distance: 0.1
       GoalAlign.scale: 24.0
@@ -183,7 +183,7 @@ local_costmap:
           obstacle_min_range: 0.0
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        cost_scaling_factor: 4.0
+        cost_scaling_factor: 2.0
         inflation_radius: 0.3
       always_send_full_costmap: True
 
@@ -228,7 +228,7 @@ global_costmap:
           obstacle_min_range: 0.0
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        cost_scaling_factor: 4.0
+        cost_scaling_factor: 5.0
         inflation_radius: 0.3    
       always_send_full_costmap: True
 
